@@ -1,31 +1,39 @@
 import os
-import xacro
-
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node, PushRosNamespace
+from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, GroupAction
-from launch.conditions import IfCondition
-
-robot_name="ic120"
-use_namespace=True
 
 def generate_launch_description():
 
+    opera_modules_dir=get_package_share_directory("opera_modules")
+    params = LaunchConfiguration('params_file', default=os.path.join(opera_modules_dir, 'params', 'params.yaml'))
+
     return LaunchDescription([
 
-        DeclareLaunchArgument('robot_name', default_value='ic120'),
+        DeclareLaunchArgument(
+            'use_sim_time',
+            default_value='false',
+            description='Use sim time if true'
+        ),
 
         GroupAction([
-            PushRosNamespace(
-                condition=IfCondition(str(use_namespace)),
-                namespace=robot_name
-            ),
             Node(
                 package='opera_modules',
                 executable='soil_release_module',
-                name='soil_release_module_for_ic120'
+                namespace='ic120'
+            ),
+            Node(
+                package='opera_modules',
+                executable='watchdog_ekf_input',
+                parameters = 
+                    [
+                        params,
+                        {
+                            'use_sim_time': bool(LaunchConfiguration('use_sim_time'))
+                        }
+                    ]
             ),
         ])
     ])
