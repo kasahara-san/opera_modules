@@ -11,8 +11,11 @@ class TopicRelay(Node):
     def __init__(self):
         super().__init__('topic_relay_gui')
 
-        self.declare_parameter('input_topic', '/gnss_odom')
-        self.declare_parameter('output_topic', '/gnss_odom_relay')
+        # self.declare_parameter('input_topic', '/gnss_odom')
+        # self.declare_parameter('output_topic', '/gnss_odom_relay')
+
+        self.declare_parameter('input_topic', '/zx200/gnss_odom')
+        self.declare_parameter('output_topic', '/zx200/gnss_odom_relay')
 
         input_topic = self.get_parameter('input_topic').get_parameter_value().string_value
         output_topic = self.get_parameter('output_topic').get_parameter_value().string_value

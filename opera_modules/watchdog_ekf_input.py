@@ -10,7 +10,6 @@ from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
 
 from std_msgs.msg import Bool
-from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 
 
@@ -25,12 +24,12 @@ class WatchdogEkfInput(Node):
     def __init__(self):
         super().__init__('watchdog_ekf_input')
 
-        self.gnss_topic = self.declare_parameter('gnss_topic', 'base_link/pose').get_parameter_value().string_value
-        self.encoder_topic = self.declare_parameter('encoder_topic', 'odom').get_parameter_value().string_value
+        self.gnss_topic = self.declare_parameter('gnss_topic', '/zx200/gnss_odom_relay').get_parameter_value().string_value
+        self.encoder_topic = self.declare_parameter('encoder_topic', '/zx200/odom_pose').get_parameter_value().string_value
         self.max_interval_sec = float(self.declare_parameter('max_interval_sec', 1.0).value)
         self.topic_absence_sec = float(self.declare_parameter('topic_absence_sec', 3.0).value)
         self.jump_thr_m = float(self.declare_parameter('jump_distance_threshold', 5.0).value)
-        self.publish_on_change_only = bool(self.declare_parameter('publish_on_change_only', True).value)
+        self.publish_on_change_only = bool(self.declare_parameter('publish_on_change_only', False).value)
         self.check_rate_hz = float(self.declare_parameter('check_rate_hz', 10.0).value)
         
         if self.check_rate_hz <= 0.0:
@@ -38,7 +37,7 @@ class WatchdogEkfInput(Node):
             self.check_rate_hz = 10.0
 
         # ------- Pub -------
-        self.emergency_pub = self.create_publisher(Bool, 'emergency_signal', 10)
+        self.emergency_pub = self.create_publisher(Bool, '/zx200/emg_stop_cmd', 10)
 
         # ------- State -------
         self.emergency = False
@@ -53,8 +52,8 @@ class WatchdogEkfInput(Node):
 
         # ------- Subscriptions -------
         qos = qos_profile_sensor_data
-        self.sub_gnss = self.create_subscription(PoseStamped, self.gnss_topic, self._gnss_cb_pose, qos)
-        self.sub_enc  = self.create_subscription(Odometry,     self.encoder_topic, self._enc_cb_odom, qos)
+        self.sub_gnss = self.create_subscription(Odometry, self.gnss_topic, self._gnss_cb_odom, qos)
+        self.sub_enc  = self.create_subscription(Odometry, self.encoder_topic, self._enc_cb_odom, qos)
 
         # ------- Timer -------
         period_s = 1.0 / self.check_rate_hz
@@ -62,7 +61,7 @@ class WatchdogEkfInput(Node):
 
         self.get_logger().info(
             f'Started WatchdogEkfInput. '
-            f'GNSS[{self.gnss_topic}:PoseStamped] ENC[{self.encoder_topic}:Odometry] '
+            f'GNSS[{self.gnss_topic}:Odometry] ENC[{self.encoder_topic}:Odometry] '
             f'max_interval={self.max_interval_sec:.3f}s jump_thr={self.jump_thr_m:.2f}m '
             f'topic_absence_sec={self.topic_absence_sec:.3f}s'
         )
@@ -91,16 +90,16 @@ class WatchdogEkfInput(Node):
         self.emergency_pub.publish(Bool(data=self.emergency))
         self.get_logger().info(f'Emergency={"TRUE" if self.emergency else "false"} ({reason})')
 
-    # ------- GNSS (PoseStamped) -------
-    def _gnss_cb_pose(self, msg: PoseStamped):
+    # ------- GNSS (Odometry) -------
+    def _gnss_cb_odom(self, msg: Odometry):
         t = self._msg_time(msg.header.stamp)
         self._touch_time('last_gnss_time', t)
-        p = (msg.pose.position.x, msg.pose.position.y, msg.pose.position.z)
+        p = (msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z)
 
         # ジャンプ検知
         if self.prev_gnss_xyz is not None:
             if euclid(p, self.prev_gnss_xyz) > self.jump_thr_m:
-                self._set_emergency(True, 'GNSS jump (PoseStamped)')
+                self._set_emergency(True, 'GNSS jump (Odometry)')
         self.prev_gnss_xyz = p
 
     # ------- Encoder (Odometry) -------
@@ -114,8 +113,6 @@ class WatchdogEkfInput(Node):
         violation = False
 
         # A) トピック存在監視（Publisher数）
-        #    Publisherが1つ以上見えている間は "last_*_pub_seen" を更新。
-        #    0が継続して topic_absence_sec を超えたら違反。
         gnss_pub_count = self.count_publishers(self.gnss_topic)
         if gnss_pub_count > 0:
             self.last_gnss_pub_seen = now_t
