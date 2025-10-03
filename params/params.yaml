@@ -5,11 +5,17 @@ watchdog_ekf_input:
     # encoder_topic: "/zx200/odom_pose"
 
     #シミュレータ向けパラメータ
-    gnss_topic: "/zx200/base_link/pose"
-    encoder_topic: "/zx200/odom"
+    gnss_topic: "/zx200/gnss_odom_relay"
+    encoder_topic: "/zx200/odom_pose"
 
     max_interval_sec: 0.5 # Topicが来なくなってから、指定時間経過の後、/emergency_signalを発行
     topic_absence_sec: 0.1 # Topicが見えなくなってから、指定時間経過の後、/emergency_signalを発行
     jump_distance_threshold: 0.2 # 位置が指定分ジャンプしたら、/emergency_signalを発行
     publish_on_change_only: false # true: false→trueに変化した際にのみ/emergency_signalを発行
     check_rate_hz: 10.0 # subscribe間隔 (check_rate_hz < max_interval_sec)
+
+topic_relay_gui:
+  ros__parameters:
+    #シミュレータ向けパラメータ
+    input_topic: "/zx200/gnss_odom"
+    output_topic: "/zx200/gnss_odom_relay"

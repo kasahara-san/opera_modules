@@ -35,5 +35,16 @@ def generate_launch_description():
                         }
                     ]
             ),
+            Node(
+                package='opera_modules',
+                executable='topic_relay_gui',
+                parameters = 
+                    [
+                        params,
+                        {
+                            'use_sim_time': bool(LaunchConfiguration('use_sim_time'))
+                        }
+                    ]
+            ),
         ])
     ])

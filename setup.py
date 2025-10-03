@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'watchdog_ekf_input = opera_modules.watchdog_ekf_input:main',
             'soil_release_module = opera_modules.soil_release_module:main',
+            'topic_relay_gui = opera_modules.topic_relay_gui:main'
         ],
     },
 )
